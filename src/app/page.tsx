@@ -1,103 +1,89 @@
-import Image from "next/image";
-
+"use client"
+import React, { useEffect } from 'react';
+import Server from "socket.io-client"
+import { Card, RANKS, SUITS } from 'react-playing-cards';
+import "react-playing-cards/lib/main.css"
+ 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  // ket noi o client side
+  const socket = Server("http://localhost:5001", {
+    transports: ["websocket"],
+    autoConnect: false,
+  });
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const socketRef = React.useRef(socket);
+
+  useEffect(() => { 
+    socketRef.current.connect();
+    socketRef.current.on("connect", () => {
+      console.log("Connected to server");
+      // receive pong here
+      socketRef.current.on("pong", (data) => { 
+        console.log("Received pong:", data);
+      });
+      // send ping here
+      socketRef.current.emit("ping");
+    });
+  }, [])
+
+  const [joined, setJoined] = React.useState(false);
+
+  const [players, setPlayers] = React.useState<string[]>([]);
+
+  const [name, setName] = React.useState("");
+
+  useEffect(() => {
+    socketRef.current.on("joined", () => {
+      // cap nhat ds player
+      setJoined(true);
+    });
+
+    socketRef.current.on("co_nguoi_vao", (newUser: string) => {
+      setPlayers([...players, newUser]);
+    });
+
+    return () => {
+      socketRef.current.off("joined");
+      socketRef.current.off("co_nguoi_vao");
+    }
+  }, [joined, socket, name, players])
+
+
+  const handleJoin = () => {
+    console.log("Joining...");
+    socketRef.current.emit("join_room", { name });
+  };
+
+  return (
+    <div>
+      <h1>Welcome to the game</h1>
+      <h2>Players:</h2>
+      <ul>
+        {players.map((player, index) => (
+          <li key={index}>-{player}</li>
+        ))}
+      </ul>
+      <div className='h-10'/>
+      {
+        !joined ? (
+          <div>
+          <input type="text" onChange={
+            (e) => {
+              setName(e.target.value);
+            }
+          } value={name} 
+          placeholder="Enter your name" />
+          <button onClick={handleJoin}>Join</button>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        ) : (
+    <div>
+      <Card size={5} rank={RANKS.JACK} suit={SUITS.DIAMONDS} />
+      <Card size={5} rank={RANKS.JACK} suit={SUITS.CLUBS} />
+      <Card size={5} rank={RANKS.JACK} suit={SUITS.SPADES} />
+      <Card size={5} rank={RANKS.JACK} suit={SUITS.HEARTS} />
     </div>
-  );
+        )
+      }
+  </div>
+  )
 }
